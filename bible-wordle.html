@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Bible Wordle</title>
+  <style>
+    body { font-family: sans-serif; text-align: center; padding: 20px; }
+    .grid { display: grid; gap: 5px; justify-content: center; margin: 10px 0; }
+    .tile {
+      width: 50px; height: 50px; border: 2px solid #ccc;
+      font-size: 24px; font-weight: bold; text-transform: uppercase;
+      display: flex; justify-content: center; align-items: center;
+      background: white;
+    }
+    .green { background-color: #6aaa64; color: white; }
+    .yellow { background-color: #c9b458; color: white; }
+    .gray { background-color: #787c7e; color: white; }
+  </style>
+</head>
+<body>
+
+  <h1>Bible Wordle</h1>
+  <div id="timer"></div>
+  <div id="board"></div>
+
+  <input type="text" id="guessInput" placeholder="Enter word" disabled>
+  <button id="submitBtn" disabled>Submit Guess</button>
+
+  <div id="message" style="margin-top: 10px; font-weight: bold;"></div>
+
+  <script>
+    let ANSWER = '';
+    let wordLength = 0;
+    const MAX_GUESSES = 6;
+    let currentGuess = 0;
+    let grid = [];
+    let timerInterval = null;
+    let timeLeft = 60;
+
+    const board = document.getElementById('board');
+    const timer = document.getElementById('timer');
+    const guessInput = document.getElementById('guessInput');
+    const submitBtn = document.getElementById('submitBtn');
+    const message = document.getElementById('message');
+
+    async function loadWordsAndStart() {
+      try {
+		const words = [
+		  // Bible Characters
+		  "ADAM", "EVE", "NOAH", "ABRAHAM", "SARAH", "ISAAC", "JACOB", "JOSEPH", "MOSES", "AARON",
+		  "JOSHUA", "RUTH", "SAMUEL", "DAVID", "SOLOMON", "ELIJAH", "ELISHA", "DANIEL", "ESTHER",
+		  "EZRA", "NEHEMIAH", "JOB", "ISAIAH", "JEREMIAH", "EZEKIEL", "HOSEA", "JOEL", "AMOS",
+		  "OBADIAH", "JONAH", "MICAH", "NAHUM", "HABAKKUK", "ZEPHANIAH", "HAGGAI", "ZECHARIAH", "MALACHI",
+		  "MARY", "JOSEPH", "JESUS", "PETER", "JOHN", "PAUL", "JUDAS", "THOMAS", "STEPHEN", "BARNABAS",
+		  "TIMOTHY", "SILAS", "TITUS", "PHILEMON"
+
+		  // Bible Places
+		  , "EDEN", "ARARAT", "UR", "CANAAN", "EGYPT", "SINAI", "JERICHO", "BETHLEHEM", "NAZARETH",
+		  "GALILEE", "JUDEA", "SAMARIA", "JERUSALEM", "BABEL", "NINEVEH", "BABYLON", "PHILISTIA", "ASSYRIA",
+		  "CORINTH", "EPHESUS", "ROME", "THESSALONICA", "BEREA", "PHILIPPI", "DAMASCUS", "ANTIOCH"
+
+		  // Bible Books
+		  , "GENESIS", "EXODUS", "LEVITICUS", "NUMBERS", "DEUTERONOMY", "JOSHUA", "JUDGES", "RUTH",
+		  "SAMUEL", "KINGS", "CHRONICLES", "EZRA", "NEHEMIAH", "ESTHER", "JOB", "PSALMS", "PROVERBS",
+		  "ECCLESIASTES", "SONGOFSOLOMON", "ISAIAH", "JEREMIAH", "LAMENTATIONS", "EZEKIEL", "DANIEL",
+		  "HOSEA", "JOEL", "AMOS", "OBADIAH", "JONAH", "MICAH", "NAHUM", "HABAKKUK", "ZEPHANIAH",
+		  "HAGGAI", "ZECHARIAH", "MALACHI", "MATTHEW", "MARK", "LUKE", "JOHN", "ACTS", "ROMANS",
+		  "CORINTHIANS", "GALATIANS", "EPHESIANS", "PHILIPPIANS", "COLOSSIANS", "THESSALONIANS",
+		  "TIMOTHY", "TITUS", "PHILEMON", "HEBREWS", "JAMES", "PETER", "JUDE", "REVELATION"
+		];
+        
+        if (words.length === 0) throw new Error("No valid words.");
+
+        ANSWER = words[Math.floor(Math.random() * words.length)];
+        wordLength = ANSWER.length;
+        startGame();
+        startTimer();
+      } catch (e) {
+        alert("Failed to load answer.txt: " + e.message);
+      }
+    }
+
+    function startGame() {
+      board.innerHTML = '';
+      grid = [];
+      currentGuess = 0;
+      guessInput.disabled = false;
+      submitBtn.disabled = false;
+      guessInput.maxLength = wordLength;
+      guessInput.placeholder = `Enter ${wordLength}-letter word`;
+      message.textContent = '';
+      timer.textContent = '';
+
+      for (let i = 0; i < MAX_GUESSES; i++) {
+        const row = [];
+        const rowDiv = document.createElement('div');
+        rowDiv.className = 'grid';
+        rowDiv.style.gridTemplateColumns = `repeat(${wordLength}, 50px)`;
+
+        for (let j = 0; j < wordLength; j++) {
+          const tile = document.createElement('div');
+          tile.className = 'tile';
+          rowDiv.appendChild(tile);
+          row.push(tile);
+        }
+
+        board.appendChild(rowDiv);
+        grid.push(row);
+      }
+    }
+
+    function startTimer() {
+      clearInterval(timerInterval);
+      timeLeft = 60;
+      timer.textContent = `⏱️ Time left: ${timeLeft}s`;
+
+      timerInterval = setInterval(() => {
+        timeLeft--;
+        timer.textContent = `⏱️ Time left: ${timeLeft}s`;
+        if (timeLeft <= 0) {
+          clearInterval(timerInterval);
+          endGame(false, "⏰ Time's up! The word was: " + ANSWER);
+        }
+      }, 1000);
+    }
+
+    submitBtn.addEventListener('click', submitGuess);
+    guessInput.addEventListener('keyup', function (e) {
+      if (e.key === 'Enter') submitGuess();
+    });
+
+    function submitGuess() {
+      const guess = guessInput.value.trim().toUpperCase();
+      guessInput.value = '';
+
+      if (guess.length !== wordLength || !/^[A-Z]+$/.test(guess)) {
+        alert(`Please enter a valid ${wordLength}-letter word.`);
+        return;
+      }
+
+      const answerArr = ANSWER.split('');
+      const guessArr = guess.split('');
+      const colors = Array(wordLength).fill('gray');
+
+      // First pass
+      for (let i = 0; i < wordLength; i++) {
+        if (guessArr[i] === answerArr[i]) {
+          colors[i] = 'green';
+          answerArr[i] = null;
+        }
+      }
+
+      // Second pass
+      for (let i = 0; i < wordLength; i++) {
+        if (colors[i] === 'gray' && answerArr.includes(guessArr[i])) {
+          colors[i] = 'yellow';
+          answerArr[answerArr.indexOf(guessArr[i])] = null;
+        }
+      }
+
+      for (let i = 0; i < wordLength; i++) {
+        grid[currentGuess][i].textContent = guessArr[i];
+        grid[currentGuess][i].classList.add(colors[i]);
+      }
+
+      if (guess === ANSWER) {
+        endGame(true, "🎉 You guessed it!");
+      } else if (++currentGuess >= MAX_GUESSES) {
+        endGame(false, `💀 Game Over. The word was: ${ANSWER}`);
+      }
+    }
+
+    function endGame(won, msg) {
+      clearInterval(timerInterval);
+      message.textContent = msg;
+      guessInput.disabled = true;
+      submitBtn.disabled = true;
+    }
+
+    // Start when loaded
+    window.onload = loadWordsAndStart;
+  </script>
+
+</body>
+</html>

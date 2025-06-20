@@ -2,191 +2,169 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Bible Wordle</title>
+  <title>Bible Wordle Game</title>
   <style>
     body {
       font-family: Arial, sans-serif;
-      background: #f4f4f4;
-      margin: 0;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      height: 100vh;
+      background-color: #f8f8f8;
+      text-align: center;
+      padding: 1em;
     }
 
     h1 {
-      font-size: 6vw;
-      margin-top: 2vh;
+      font-size: 2em;
+      margin-bottom: 20px;
     }
 
     #board {
-      display: flex;
-      flex-direction: column;
-      gap: 1vh;
-      margin: 2vh 0;
+      display: grid;
+      justify-content: center;
+      gap: 10px;
+      margin-bottom: 20px;
     }
 
     .row {
       display: flex;
       justify-content: center;
-      gap: 1vw;
+      gap: 10px;
     }
 
     .tile {
-      width: 8vw;
-      height: 8vw;
-      max-width: 70px;
-      max-height: 70px;
-      background: white;
-      border: 2px solid #ccc;
-      font-size: 4vw;
-      max-font-size: 36px;
+      width: 60px;
+      height: 60px;
+      font-size: 2em;
       text-transform: uppercase;
       text-align: center;
       vertical-align: middle;
-      line-height: 8vw;
-      font-weight: bold;
-      user-select: none;
+      border: 2px solid #ccc;
+      border-radius: 5px;
+      background-color: white;
     }
 
-    .correct {
-      background: green;
+    .tile.correct {
+      background-color: green;
       color: white;
     }
 
-    .present {
-      background: goldenrod;
+    .tile.present {
+      background-color: goldenrod;
       color: white;
     }
 
-    .absent {
-      background: #ccc;
+    .tile.absent {
+      background-color: #999;
       color: white;
     }
 
-    #inputRow {
-      margin-top: 2vh;
-    }
-
-    #guessInput {
-      font-size: 4vw;
-      text-transform: uppercase;
-      padding: 1vh;
-      width: 80vw;
+    input[type="text"] {
+      font-size: 1.5em;
+      padding: 10px;
+      width: 80%;
       max-width: 400px;
-      text-align: center;
+      text-transform: uppercase;
     }
 
-    #submitBtn {
-      margin-top: 1vh;
-      font-size: 4vw;
-      padding: 1vh 2vw;
+    button {
+      font-size: 1.5em;
+      padding: 10px 20px;
+      margin-top: 10px;
+    }
+
+    @media (max-width: 600px) {
+      .tile {
+        width: 48px;
+        height: 48px;
+        font-size: 1.5em;
+      }
     }
   </style>
 </head>
 <body>
-
   <h1>Bible Wordle</h1>
   <div id="board"></div>
-
-  <div id="inputRow">
-    <input type="text" id="guessInput" placeholder="Enter your guess" />
-    <br>
-    <button id="submitBtn">Submit</button>
-  </div>
+  <input type="text" id="guessInput" maxlength="20" placeholder="Enter your guess" autofocus />
+  <br>
+  <button onclick="submitGuess()">Submit</button>
+  <p id="status"></p>
 
   <script>
+    // You can replace this with a word from answer.txt if needed
     const words = [
-      // Characters
-      "ADAM", "EVE", "NOAH", "ABRAHAM", "SARAH", "MOSES", "JESUS", "DAVID", "PAUL", "PETER",
-      "ESTHER", "RUTH", "DANIEL", "JOSEPH", "ISAIAH", "JEREMIAH", "EZEKIEL", "ELIJAH",
-
-      // Places
-      "EDEN", "BABEL", "UR", "SINAI", "EGYPT", "JUDEA", "GALILEE", "NAZARETH", "BETHLEHEM", "JERUSALEM",
-
-      // Books
-      "GENESIS", "EXODUS", "LEVITICUS", "NUMBERS", "PSALMS", "PROVERBS", "ISAIAH", "MATTHEW",
-      "MARK", "LUKE", "JOHN", "ACTS", "ROMANS", "HEBREWS", "REVELATION"
+      "GRACE", "FAITH", "MERCY", "CROSS", "BIBLE", "JESUS", "PAUL", "PETER",
+      "NAZARETH", "PSALMS", "EXODUS", "MATTHEW", "GENESIS", "DEUTERONOMY", "SAMUEL"
     ];
-
     const answer = words[Math.floor(Math.random() * words.length)].toUpperCase();
-    const maxAttempts = 6;
-    let currentAttempt = 0;
+    const maxGuesses = 6;
+    let currentRow = 0;
 
-    const board = document.getElementById("board");
-    const guessInput = document.getElementById("guessInput");
-    const submitBtn = document.getElementById("submitBtn");
+    const board = document.getElementById('board');
+    const guessInput = document.getElementById('guessInput');
+    const status = document.getElementById('status');
 
-    function createRow(guess = "", result = []) {
-      const row = document.createElement("div");
-      row.className = "row";
-
-      for (let i = 0; i < answer.length; i++) {
-        const tile = document.createElement("div");
-        tile.className = "tile";
-        tile.textContent = guess[i] || "";
-
-        if (result[i]) tile.classList.add(result[i]);
-
-        row.appendChild(tile);
+    function createBoard() {
+      board.innerHTML = '';
+      for (let i = 0; i < maxGuesses; i++) {
+        const row = document.createElement('div');
+        row.className = 'row';
+        for (let j = 0; j < answer.length; j++) {
+          const tile = document.createElement('div');
+          tile.className = 'tile';
+          tile.setAttribute('data-row', i);
+          tile.setAttribute('data-col', j);
+          row.appendChild(tile);
+        }
+        board.appendChild(row);
       }
-
-      board.appendChild(row);
     }
 
-    submitBtn.onclick = () => {
+    function submitGuess() {
       const guess = guessInput.value.trim().toUpperCase();
       if (guess.length !== answer.length) {
-        alert(`Guess must be ${answer.length} letters.`);
+        alert(`Please enter a ${answer.length}-letter word.`);
         return;
       }
 
-      const result = Array(answer.length).fill("absent");
-      const answerArr = answer.split("");
-      const guessArr = guess.split("");
+      const rowTiles = document.querySelectorAll(`.row:nth-child(${currentRow + 1}) .tile`);
+      const answerLetters = answer.split('');
+      const guessLetters = guess.split('');
+      const letterUsed = Array(answer.length).fill(false);
 
-      // First pass: exact matches
+      // First pass – correct letters
       for (let i = 0; i < answer.length; i++) {
-        if (guessArr[i] === answerArr[i]) {
-          result[i] = "correct";
-          answerArr[i] = null;
+        rowTiles[i].textContent = guessLetters[i];
+        if (guessLetters[i] === answerLetters[i]) {
+          rowTiles[i].classList.add('correct');
+          letterUsed[i] = true;
+          guessLetters[i] = null;
         }
       }
 
-      // Second pass: partial matches
+      // Second pass – present letters
       for (let i = 0; i < answer.length; i++) {
-        if (result[i] !== "correct" && answerArr.includes(guessArr[i])) {
-          result[i] = "present";
-          answerArr[answerArr.indexOf(guessArr[i])] = null;
+        if (!rowTiles[i].classList.contains('correct') && guessLetters[i]) {
+          const index = answerLetters.findIndex((ch, idx) => ch === guessLetters[i] && !letterUsed[idx]);
+          if (index !== -1) {
+            rowTiles[i].classList.add('present');
+            letterUsed[index] = true;
+          } else {
+            rowTiles[i].classList.add('absent');
+          }
         }
       }
 
-      createRow(guess, result);
-      currentAttempt++;
+      currentRow++;
+      guessInput.value = '';
 
       if (guess === answer) {
-        alert("Congratulations! You guessed the word: " + answer);
-        submitBtn.disabled = true;
+        status.textContent = `🎉 Correct! The word was ${answer}`;
         guessInput.disabled = true;
-      } else if (currentAttempt >= maxAttempts) {
-        alert("Game over! The correct word was: " + answer);
-        submitBtn.disabled = true;
+      } else if (currentRow >= maxGuesses) {
+        status.textContent = `❌ Game Over! The word was ${answer}`;
         guessInput.disabled = true;
-      } else {
-        guessInput.value = "";
-        guessInput.focus();
       }
-    };
-
-    // Initialize empty rows
-    for (let i = 0; i < maxAttempts; i++) {
-      createRow(" ".repeat(answer.length));
     }
 
-    // Reset board to allow guesses
-    board.innerHTML = "";
+    createBoard();
   </script>
 </body>
 </html>
